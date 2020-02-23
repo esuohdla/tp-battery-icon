@@ -158,12 +158,12 @@ class ControlTPacpi():
 
     def get_start_threshold(self):
         param = hex(self.bat)
-        result = self.acpi_call("\_SB.PCI0.LPC.EC.HKEY.BCTG " + param)
+        result = self.nullstr(self.acpi_call("\_SB.PCI0.LPC.EC.HKEY.BCTG " + param))
         return int(result, 16) - (3 * 256)
 
     def get_stop_threshold(self):
         param = hex(self.bat)
-        result = self.acpi_call("\_SB.PCI0.LPC.EC.HKEY.BCSG " + param)
+        result = self.first_nullstr(self.acpi_call("\_SB.PCI0.LPC.EC.HKEY.BCSG " + param))
         ret = int(result, 16) - (3 * 256)
         if ret == 0:
             ret = 100
@@ -186,6 +186,14 @@ class ControlTPacpi():
     def start_cycle(self):
         param = hex(self.bat)
         self.acpi_call("\_SB.PCI0.LPC.EC.HKEY.BDSG " + param)
+
+    def first_nullstr(self, instring):
+        # filter out first null terminated string
+        # required on 3.10+ kernels
+        try:
+            return instring[0:instring.index('\x00')]
+        except ValueError:
+            return instring
 
 #-------------------------------------------------------------------------------
 
@@ -304,9 +312,9 @@ class TrayIcon():
 
         subtitle = ""
         if state == "charging":
-            subtitle += state + " " + self.format_time(ctrl.get_time_charging())
+            subtitle += state.capitalize() + ", " + self.format_time(ctrl.get_time_charging()) + " until full"
         if state == "discharging":
-            subtitle += state + " " + self.format_time(ctrl.get_time_running())
+            subtitle += state.capitalize() + ", " + self.format_time(ctrl.get_time_running()) + " remaining"
 
         if subtitle:
             subheader = Gtk.MenuItem(subtitle)
@@ -402,12 +410,12 @@ class TrayIcon():
         if state == "none":
             title = "Battery " + str(bat) + " not installed"
         else:
-            title = "Battery " + str(bat) + " at " + str(ctrl.get_percentage()) + "% " + state
+            title = "Battery " + str(bat) + " at " + str(ctrl.get_percentage()) + "% \n" + state.capitalize()
 
         if state == "charging":
-            title += " " + self.format_time(ctrl.get_time_charging())
+            title += " " + self.format_time(ctrl.get_time_charging()) + " until full"
         if state == "discharging":
-            title += " " + self.format_time(ctrl.get_time_running())
+            title += " " + self.format_time(ctrl.get_time_running()) + " remaining"
 
         icon.icon.set_tooltip_text(title)
 
